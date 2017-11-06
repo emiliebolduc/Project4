@@ -1,0 +1,86 @@
+---
+title: "CUNY Data 607 - Project 4- In Progress"
+author: "Emilie M Bolduc"
+date: "11/5/2017"
+output: html_document
+---
+
+### Assignment
+It can be useful to be able to classify new "test" documents using already classified "training" documents.  A common example is using a corpus of labeled spam and ham (non-spam) e-mails to predict whether or not a new document is spam.  
+
+For this project, you can start with a spam/ham dataset, then predict the class of new documents (either withheld from the training dataset or from another source such as your own spam folder).  
+
+### Solution
+#### Libraries
+```{r results='hide', message=FALSE, warning=FALSE}
+library(RCurl)
+library(XML)
+library(stringr)
+library(tm)
+```
+
+
+#### Spam files
+Take a look at the files
+```{r}
+length(list.files("spam_2"))
+list.files("spam_2")[1:3]
+```
+
+Tried to rename spam files (this did not work)
+```{r eval=FALSE}
+file.rename(list.files(pattern="0*."), paste0("", 1:1396))
+```
+
+Look at the file format of one spam email
+```{r}
+file.info("spam_2/00001.317e78fa8ee2f54cd4890fdc09ba8176")
+spam1 <- readLines("spam_2/00001.317e78fa8ee2f54cd4890fdc09ba8176")
+spam1 <- str_c(spam1, collapse = "")
+head(spam1)
+```
+
+#### Create Corpus for 1
+```{r}
+spam1_corpus <- Corpus(VectorSource(spam1))
+spam1_corpus[[1]]
+meta(spam1_corpus[[1]])
+```
+
+#### Combine all files into one big list
+```{r}
+file.list <- list.files("spam_2", pattern = "*.*")
+head(file.list)
+length(file.list)
+setwd("/Users/emiliembolduc/Week 10 - Text Mining/Project 4/spam_2")
+spam.list <- sapply(file.list, readLines)
+class(spam.list)
+```
+
+#### Create corpus for all Spam
+```{r}
+SpamAll_corpus <- Corpus(VectorSource(spam.list)) %>%
+  tm_map(content_transformer(tolower)) %>%
+  tm_map(removeNumbers) %>%
+  tm_map(removeWords, stopwords("english")) %>%
+  tm_map(removePunctuation) %>% 
+  tm_map(stemDocument) %>% 
+  tm_map(stripWhitespace) #%>%
+SpamAll_corpus <- tm_map(SpamAll_corpus, removeNumbers)
+```
+
+#### Create a Term Document Matrix for all Spam
+```{r}
+Spam_tdm <- TermDocumentMatrix(SpamAll_corpus)
+Spam_tdm
+```
+
+Wanted to check out what the data looks like...
+```{r}
+Spam_matrix <- as.matrix(Spam_tdm)
+Spam_matrix <- sort(rowSums(Spam_matrix), decreasing = TRUE)
+Spam_df <- data.frame(word = names(Spam_matrix),freq=Spam_matrix)
+head(Spam_df, 50)
+```
+
+
