@@ -1,17 +1,17 @@
 ---
-title: "CUNY Data 607 - Project 4- In Progress"
+title: "CUNY Data 607 - Project 4 - In Progress"
 author: "Emilie M Bolduc"
-date: "11/5/2017"
+date: "11/7/2017"
 output: html_document
 ---
 
-### Assignment
+## Assignment
 It can be useful to be able to classify new "test" documents using already classified "training" documents.  A common example is using a corpus of labeled spam and ham (non-spam) e-mails to predict whether or not a new document is spam.  
 
 For this project, you can start with a spam/ham dataset, then predict the class of new documents (either withheld from the training dataset or from another source such as your own spam folder).  
 
-### Solution
-#### Libraries
+## Solution
+### Libraries
 ```{r results='hide', message=FALSE, warning=FALSE}
 library(RCurl)
 library(XML)
@@ -20,9 +20,9 @@ library(tm)
 ```
 
 
-#### Spam files
-Take a look at the files
-```{r}
+### Spam files
+#### Take a look at the files
+```{r spam files peak}
 length(list.files("spam_2"))
 list.files("spam_2")[1:3]
 ```
@@ -33,7 +33,7 @@ file.rename(list.files(pattern="0*."), paste0("", 1:1396))
 ```
 
 Look at the file format of one spam email
-```{r}
+```{r spam file}
 file.info("spam_2/00001.317e78fa8ee2f54cd4890fdc09ba8176")
 spam1 <- readLines("spam_2/00001.317e78fa8ee2f54cd4890fdc09ba8176")
 spam1 <- str_c(spam1, collapse = "")
@@ -41,14 +41,14 @@ head(spam1)
 ```
 
 #### Create Corpus for 1
-```{r}
+```{r spam corpus 1}
 spam1_corpus <- Corpus(VectorSource(spam1))
 spam1_corpus[[1]]
 meta(spam1_corpus[[1]])
 ```
 
 #### Combine all files into one big list
-```{r}
+```{r spam file list}
 file.list <- list.files("spam_2", pattern = "*.*")
 head(file.list)
 length(file.list)
@@ -57,8 +57,9 @@ spam.list <- sapply(file.list, readLines)
 class(spam.list)
 ```
 
-#### Create corpus for all Spam
-```{r}
+#### Create corpus for all Spam and prepare data 
+Remove numbers, punctuation characters, stop words, and reduce terms to stem words
+```{r spam corpus}
 SpamAll_corpus <- Corpus(VectorSource(spam.list)) %>%
   tm_map(content_transformer(tolower)) %>%
   tm_map(removeNumbers) %>%
@@ -70,17 +71,106 @@ SpamAll_corpus <- tm_map(SpamAll_corpus, removeNumbers)
 ```
 
 #### Create a Term Document Matrix for all Spam
-```{r}
+```{r spam tdm}
 Spam_tdm <- TermDocumentMatrix(SpamAll_corpus)
 Spam_tdm
 ```
 
-Wanted to check out what the data looks like...
-```{r}
+Take a peak at the data...
+```{r spam df}
 Spam_matrix <- as.matrix(Spam_tdm)
 Spam_matrix <- sort(rowSums(Spam_matrix), decreasing = TRUE)
 Spam_df <- data.frame(word = names(Spam_matrix),freq=Spam_matrix)
 head(Spam_df, 50)
 ```
+It looks like my clean up removed some letters, like "e," from the end of some words, like "receiv".
 
+#### Add a column with 1 to classify these words with the Spam emails
+```{r spam tdm1}
+spam_tdm1 <- Spam_tdm
+spam_tdm1$Spam_Ham <- rep(1,nrow(Spam_tdm))
+```
 
+And make sure it work
+```{r spam df1}
+Spam_matrix <- as.matrix(spam_tdm1)
+Spam_matrix <- sort(rowSums(Spam_matrix), decreasing = TRUE)
+Spam_df <- data.frame(Word = names(Spam_matrix), Frequency = Spam_matrix, Spam_Ham = spam_tdm1$Spam_Ham)
+head(Spam_df, 30)
+```
+
+### Ham files
+#### Take a look at the Ham files
+```{r ham files peak}
+length(list.files("/Users/emiliembolduc/Week 10 - Text Mining/Project 4/easy_ham"))
+list.files("/Users/emiliembolduc/Week 10 - Text Mining/Project 4/easy_ham")[1:3]
+```
+
+Look at the file format of one Ham email
+```{r ham file}
+file.info("/Users/emiliembolduc/Week 10 - Text Mining/Project 4/easy_ham/00001.7c53336b37003a9286aba55d2945844c")
+ham1 <- readLines("/Users/emiliembolduc/Week 10 - Text Mining/Project 4/easy_ham/00001.7c53336b37003a9286aba55d2945844c")
+ham1 <- str_c(ham1, collapse = "")
+head(ham1)
+```
+
+#### Create Corpus for 1 Ham file
+```{r ham corpus 1}
+ham1_corpus <- Corpus(VectorSource(ham1))
+ham1_corpus[[1]]
+meta(ham1_corpus[[1]])
+```
+
+#### Combine all Ham files into one big list
+```{r ham file list}
+hamfile.list <- list.files("/Users/emiliembolduc/Week 10 - Text Mining/Project 4/easy_ham", pattern = "*.*")
+head(hamfile.list)
+length(hamfile.list)
+setwd("/Users/emiliembolduc/Week 10 - Text Mining/Project 4/easy_ham")
+ham.list <- sapply(hamfile.list, readLines)
+class(ham.list)
+```
+
+#### Create corpus for all Ham files and prepare data 
+Remove numbers, punctuation characters, stop words, and reduce terms to stem words
+```{r ham corpus}
+HamAll_corpus <- Corpus(VectorSource(ham.list)) %>%
+  tm_map(content_transformer(tolower)) %>%
+  tm_map(removeNumbers) %>%
+  tm_map(removeWords, stopwords("english")) %>%
+  tm_map(removePunctuation) %>% 
+  tm_map(stemDocument) %>% 
+  tm_map(stripWhitespace) #%>%
+HamAll_corpus <- tm_map(HamAll_corpus, removeNumbers)
+```
+
+#### Create a Term Document Matrix for all Ham files
+```{r ham tdm}
+Ham_tdm <- TermDocumentMatrix(HamAll_corpus)
+Ham_tdm
+```
+
+Take a peak at the data...
+```{r ham df}
+Ham_matrix <- as.matrix(Ham_tdm)
+Ham_matrix <- sort(rowSums(Ham_matrix), decreasing = TRUE)
+Ham_df <- data.frame(word = names(Ham_matrix), freq = Ham_matrix)
+head(Ham_df, 30)
+```
+Again, it looks like my clean up removed some letters, like "e," from the end of some words, like "receiv". Do not know how to correct. 
+
+#### Add a column with o to classify these words with the Ham emails
+```{r ham tdm1}
+Ham_tdm1 <- Ham_tdm
+Ham_tdm1$Spam_Ham <- rep(0,nrow(Ham_tdm))
+```
+
+And make sure it work
+```{r ham df1}
+Ham_matrix <- as.matrix(Ham_tdm1)
+Ham_matrix <- sort(rowSums(Ham_matrix), decreasing = TRUE)
+Ham_df <- data.frame(Word = names(Ham_matrix), Frequency = Ham_matrix, Spam_Ham = Ham_tdm1$Spam_Ham)
+head(Ham_df, 30)
+```
+
+### Combine Spam and Ham term document matrices
